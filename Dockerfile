@@ -1,3 +1,4 @@
+ARG TF_VERSION=1.4.0
 # Build ui
 FROM node:16-alpine as ui
 WORKDIR /src
@@ -26,7 +27,6 @@ COPY --from=ui ./src/dist ./ui/dist
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o rover .
 
 # Release stage
-ARG TF_VERSION=1.4.0
 FROM hashicorp/terraform:$TF_VERSION as terraform-dep
 FROM alpine:3.17
 
