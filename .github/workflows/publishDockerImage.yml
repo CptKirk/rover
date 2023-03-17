@@ -11,8 +11,9 @@ jobs:
     name: Build and push image to GitHub Container Registry
     runs-on: ubuntu-latest
     steps:
-      - name: Check out the repo and parse tag
+      - name: Check out the repo
         uses: actions/checkout@v2
+      - name: Parse tag
         run: |
           IN=${{ github.ref_name }}
           SPLIT=(${IN//_/ })
