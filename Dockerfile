@@ -1,6 +1,3 @@
-# Prep base stage
-ARG TF_VERSION=light
-
 # Build ui
 FROM node:16-alpine as ui
 WORKDIR /src
@@ -18,26 +15,27 @@ COPY ./ui/src ./src
 RUN npm run build
 
 # Build rover
-FROM golang:1.17 AS rover
+FROM golang:1.20 AS builder
 WORKDIR /src
 # Copy full source
-COPY . .
-# Copy ui/dist from ui stage as it needs to embedded
+COPY ./go.* .
+COPY ./*.go .
 COPY --from=ui ./src/dist ./ui/dist
 # Build rover
-RUN go get -d -v golang.org/x/net/html  
-RUN CGO_ENABLED=0 GOOS=linux go build -o rover .
+# RUN go get -d -v golang.org/x/net/html  
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o rover .
 
 # Release stage
-FROM hashicorp/terraform:$TF_VERSION AS release
-# Copy terraform binary to the rover's default terraform path
-RUN cp /bin/terraform /usr/local/bin/terraform
+ARG TF_VERSION=1.4.0
+FROM hashicorp/terraform:$TF_VERSION as terraform-dep
+FROM alpine:3.17
+
 # Copy rover binary
-COPY --from=rover /src/rover /bin/rover
+COPY --from=builder /src/rover /bin/rover
+COPY --from=terraform-dep /bin/terraform /bin/terraform
 RUN chmod +x /bin/rover
 
-# Install Google Chrome
-RUN apk add chromium
+RUN apk add --no-cache bash curl ca-certificates
 
 WORKDIR /src
 
