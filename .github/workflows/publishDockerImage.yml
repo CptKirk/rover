@@ -8,30 +8,28 @@ on:
 
 jobs:
   push_to_registry:
-    name: Push Docker image to Docker Hub
+    name: Build and push image to GitHub Container Registry
     runs-on: ubuntu-latest
     steps:
-      - name: Check out the repo
+      - name: Check out the repo and parse tag
         uses: actions/checkout@v2
+        run: |
+          IN=${{ github.ref_name }}
+          SPLIT=(${IN//_/ })
+          TF_VER=${arrIN[1]}
       
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v1
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v2
         with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
-
-      - name: Extract metadata (tags, labels) for Docker
-        id: meta
-        uses: docker/metadata-action@v3
-        with:
-          images: im2nguyen/rover
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GHCR_TOKEN }}
       
       - name: Build and push Docker image
         uses: docker/build-push-action@v2
         with:
           context: .
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          tags: CptKirk/rover:${{ github.ref_name }}
           build-args: 
-            TF_VERSION=1.1.2
+            TF_VERSION=${{ env.TF_VER }}
