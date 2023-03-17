@@ -31,6 +31,6 @@ jobs:
         with:
           context: .
           push: true
-          tags: cptkirk/rover:${{ github.ref_name }}
+          tags: ghcr.io/cptkirk/rover:${{ github.ref_name }}
           build-args: 
             TF_VERSION=${{ env.TF_VER }}

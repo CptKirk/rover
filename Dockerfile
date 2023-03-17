@@ -29,6 +29,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o rover .
 # Release stage
 FROM hashicorp/terraform:$TF_VERSION as terraform-dep
 FROM alpine:3.17
+LABEL org.opencontainers.image.source="https://github.com/CptKirk/rover"
 
 # Copy rover binary
 COPY --from=builder /src/rover /bin/rover
