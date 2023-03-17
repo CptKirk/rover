@@ -33,4 +33,4 @@ jobs:
           push: true
           tags: cptkirk/rover:${{ github.ref_name }}
           build-args: 
-            TF_VERSION=${TF_VER}
+            TF_VERSION=${{ env.TF_VER }}
