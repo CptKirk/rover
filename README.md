@@ -38,7 +38,7 @@ Once Rover runs on `0.0.0.0:9000`, navigate to it to find the visualization!
 Standalone mode generates a `rover.zip` file containing all the static assets.
 
 ```
-$ docker run --rm -it -p 9000:9000 -v $(pwd):/src im2nguyen/rover -standalone true
+$ docker run --rm -it -p 9000:9000 -v $(pwd):/src im2nguyen/rover --standalone
 ```
 
 After all the assets are generated, unzip `rover.zip` and open `rover/index.html` in your favourite web browser.
@@ -62,7 +62,7 @@ $ docker run --rm -it -p 9000:9000 -v $(pwd):/src --env-file ./.env im2nguyen/ro
 Use `-tfBackendConfig` to define backend config files and `-tfVarsFile` or `-tfVar` to define variables. For example, you can run the following in the `example/random-test` directory to overload variables.
 
 ```
-$ docker run --rm -it -p 9000:9000 -v $(pwd):/src im2nguyen/rover -tfBackendConfig test.tfbackend -tfVarsFile test.tfvars -tfVar max_length=4
+$ docker run --rm -it -p 9000:9000 -v $(pwd):/src im2nguyen/rover --tfBackendConfig test.tfbackend --tfVarsFile test.tfvars --tfVar max_length=4
 ```
 
 ### Image generation
@@ -70,7 +70,7 @@ $ docker run --rm -it -p 9000:9000 -v $(pwd):/src im2nguyen/rover -tfBackendConf
 Use `-genImage` to generate and save the visualization as a SVG image.
 
 ```
-$ docker run --rm -it  -v $(pwd):/src im2nguyen/rover -genImage true
+$ docker run --rm -it  -v $(pwd):/src im2nguyen/rover --genImage
 ```
 
 ## Installation
@@ -144,7 +144,7 @@ Navigate into `random-test` example configuration. This directory contains confi
 $ cd example/random-test
 ```
 
-Run Rover. Rover will start running in the current directory and assume the Terraform binary lives in `/usr/local/bin/terraform` by default.
+Run Rover. Rover will start running in the current directory and assume the Terraform binary lives in `/bin/terraform` by default.
 
 ```
 $ rover
@@ -162,7 +162,7 @@ $ rover
 You can specify the working directory (where your configuration is living) and the Terraform binary location using flags.
 
 ```
-$ rover -workingDir "example/eks-cluster" -tfPath "/Users/dos/terraform"
+$ rover --workingDir "example/eks-cluster" --tfPath "/Users/dos/terraform"
 ```
 
 Once Rover runs on `0.0.0.0:9000`, navigate to it to find the visualization!
