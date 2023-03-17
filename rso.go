@@ -3,14 +3,15 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/hashicorp/terraform-config-inspect/tfconfig"
-	tfjson "github.com/hashicorp/terraform-json"
-	"io/ioutil"
+	"io"
 	"log"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
+
+	"github.com/hashicorp/terraform-config-inspect/tfconfig"
+	tfjson "github.com/hashicorp/terraform-json"
 )
 
 // ResourcesOverview represents the root module
@@ -45,7 +46,7 @@ type ModuleLocations struct {
 }
 
 type ModuleLocation struct {
-	Key    string `json:"Key,omitempty""`
+	Key    string `json:"Key,omitempty"`
 	Source string `json:"Source,omitempty"`
 	Dir    string `json:"Dir,omitempty"`
 }
@@ -64,7 +65,7 @@ func (r *rover) PopulateModuleLocations(moduleJSONFile string, locations map[str
 	defer jsonFile.Close()
 
 	// read our opened jsonFile as a byte array.
-	byteValue, _ := ioutil.ReadAll(jsonFile)
+	byteValue, _ := io.ReadAll(jsonFile)
 
 	// we unmarshal our byteArray which contains our
 	// jsonFile's content into 'users' which we defined above

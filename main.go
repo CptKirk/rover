@@ -5,10 +5,9 @@ import (
 	"embed"
 	"encoding/json"
 	"errors"
-	"flag"
 	"fmt"
+	"io"
 	"io/fs"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -16,13 +15,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/akamensky/argparse"
 	tfe "github.com/hashicorp/go-tfe"
-	"github.com/hashicorp/terraform-config-inspect/tfconfig"
 	"github.com/hashicorp/terraform-exec/tfexec"
 	tfjson "github.com/hashicorp/terraform-json"
 )
 
-const VERSION = "0.3.0"
+const VERSION = "0.4.0"
 
 var TRUE = true
 
@@ -66,32 +65,120 @@ type rover struct {
 }
 
 func main() {
-	var tfPath, workingDir, name, zipFileName, ipPort, planPath, planJSONPath, workspaceName, tfcOrgName, tfcWorkspaceName string
-	var standalone, genImage, showSensitive, getVersion, tfcNewRun bool
+	var tfPath, workingDir, name, zipFileName, ipPort, planPathPtr, planJSONPathPtr, workspaceName, tfcOrgName, tfcWorkspaceName *string
+	var standalone, genImage, showSensitive, getVersion, tfcNewRun *bool
 	var tfVarsFiles, tfVars, tfBackendConfigs arrayFlags
-	flag.StringVar(&tfPath, "tfPath", "/usr/local/bin/terraform", "Path to Terraform binary")
-	flag.StringVar(&workingDir, "workingDir", ".", "Path to Terraform configuration")
-	flag.StringVar(&name, "name", "rover", "Configuration name")
-	flag.StringVar(&zipFileName, "zipFileName", "rover", "Standalone zip file name")
-	flag.StringVar(&ipPort, "ipPort", "0.0.0.0:9000", "IP and port for Rover server")
-	flag.StringVar(&planPath, "planPath", "", "Plan file path")
-	flag.StringVar(&planJSONPath, "planJSONPath", "", "Plan JSON file path")
-	flag.StringVar(&workspaceName, "workspaceName", "", "Workspace name")
-	flag.StringVar(&tfcOrgName, "tfcOrg", "", "Terraform Cloud Organization name")
-	flag.StringVar(&tfcWorkspaceName, "tfcWorkspace", "", "Terraform Cloud Workspace name")
-	flag.BoolVar(&standalone, "standalone", false, "Generate standalone HTML files")
-	flag.BoolVar(&showSensitive, "showSensitive", false, "Display sensitive values")
-	flag.BoolVar(&tfcNewRun, "tfcNewRun", false, "Create new Terraform Cloud run")
-	flag.BoolVar(&getVersion, "version", false, "Get current version")
-	flag.BoolVar(&genImage, "genImage", false, "Generate graph image")
-	flag.Var(&tfVarsFiles, "tfVarsFile", "Path to *.tfvars files")
-	flag.Var(&tfVars, "tfVar", "Terraform variable (key=value)")
-	flag.Var(&tfBackendConfigs, "tfBackendConfig", "Path to *.tfbackend files")
-	flag.Parse()
 
-	if getVersion {
+	parser := argparse.NewParser("rover", "Rover is a Terraform visualizer")
+	tfPath = parser.String("", "tfPath", &argparse.Options{
+		Required: false,
+		Help:     "Path to Terraform binary",
+		Default:  "/bin/terraform",
+	})
+	workingDir = parser.String("", "workingDir", &argparse.Options{
+		Required: false,
+		Help:     "Path to Terraform configuration",
+		Default:  ".",
+	})
+	name = parser.String("", "name", &argparse.Options{
+		Required: false,
+		Help:     "Configuration name",
+		Default:  "rover",
+	})
+	zipFileName = parser.String("", "zipFileName", &argparse.Options{
+		Required: false,
+		Help:     "Standalone zip file name",
+		Default:  "rover",
+	})
+	ipPort = parser.String("", "ipPort", &argparse.Options{
+		Required: false,
+		Help:     "IP and port for Rover server",
+		Default:  "0.0.0.0:9000",
+	})
+	planPathPtr = parser.String("", "planPath", &argparse.Options{
+		Required: false,
+		Help:     "Plan file path",
+		Default:  "",
+	})
+	planJSONPathPtr = parser.String("", "planJSONPath", &argparse.Options{
+		Required: false,
+		Help:     "Plan JSON file path",
+		Default:  "",
+	})
+	workspaceName = parser.String("", "workspaceName", &argparse.Options{
+		Required: false,
+		Help:     "Workspace name",
+		Default:  "",
+	})
+	tfcOrgName = parser.String("", "tfcOrg", &argparse.Options{
+		Required: false,
+		Help:     "Terraform Cloud Organization name",
+		Default:  "",
+	})
+	tfcWorkspaceName = parser.String("", "tfcWorkspace", &argparse.Options{
+		Required: false,
+		Help:     "Terraform Cloud Workspace name",
+		Default:  "",
+	})
+	standalone = parser.Flag("", "standalone", &argparse.Options{
+		Required: false,
+		Help:     "Generate standalone HTML files",
+		Default:  false,
+	})
+	showSensitive = parser.Flag("", "showSensitive", &argparse.Options{
+		Required: false,
+		Help:     "Display sensitive values",
+		Default:  false,
+	})
+	tfcNewRun = parser.Flag("", "tfcNewRun", &argparse.Options{
+		Required: false,
+		Help:     "Create new Terraform Cloud run",
+		Default:  false,
+	})
+	getVersion = parser.Flag("", "version", &argparse.Options{
+		Required: false,
+		Help:     "Get current version",
+		Default:  false,
+	})
+	genImage = parser.Flag("", "genImage", &argparse.Options{
+		Required: false,
+		Help:     "Generate graph image",
+		Default:  false,
+	})
+	tfVarsFilesTmp := parser.StringList("", "tfVarsFile", &argparse.Options{
+		Required: false,
+		Help:     "Path to *.tfvars files",
+		Default:  []string{},
+	})
+	tfVarsTmp := parser.StringList("", "tfVar", &argparse.Options{
+		Required: false,
+		Help:     "Terraform variable (key=value)",
+		Default:  []string{},
+	})
+	tfBackendConfigsTmp := parser.StringList("", "tfBackendConfig", &argparse.Options{
+		Required: false,
+		Help:     "Path to *.tfbackend files",
+		Default:  []string{},
+	})
+
+	err := parser.Parse(os.Args)
+	if err != nil {
+		fmt.Print(parser.Usage(err))
+	}
+
+	if *getVersion {
 		fmt.Printf("Rover v%s\n", VERSION)
 		return
+	}
+
+	for _, tfVarFile := range *tfVarsFilesTmp {
+		tfVarsFiles.Set(tfVarFile)
+	}
+	for _, tfVar := range *tfVarsTmp {
+		tfVars.Set(tfVar)
+	}
+	for _, tfBackendConfig := range *tfBackendConfigsTmp {
+		tfBackendConfigs.Set(tfBackendConfig)
 	}
 
 	log.Println("Starting Rover...")
@@ -102,15 +189,17 @@ func main() {
 
 	path, err := os.Getwd()
 	if err != nil {
-		log.Fatal(errors.New("Unable to get current working directory"))
+		log.Fatal(errors.New("unable to get current working directory"))
 	}
 
+	planPath := *planPathPtr
 	if planPath != "" {
 		if !strings.HasPrefix(planPath, "/") {
 			planPath = filepath.Join(path, planPath)
 		}
 	}
 
+	planJSONPath := *planJSONPathPtr
 	if planJSONPath != "" {
 		if !strings.HasPrefix(planJSONPath, "/") {
 			planJSONPath = filepath.Join(path, planJSONPath)
@@ -118,20 +207,20 @@ func main() {
 	}
 
 	r := rover{
-		Name:             name,
-		WorkingDir:       workingDir,
-		TfPath:           tfPath,
+		Name:             *name,
+		WorkingDir:       *workingDir,
+		TfPath:           *tfPath,
 		PlanPath:         planPath,
 		PlanJSONPath:     planJSONPath,
-		ShowSensitive:    showSensitive,
-		GenImage:         genImage,
+		ShowSensitive:    *showSensitive,
+		GenImage:         *genImage,
 		TfVarsFiles:      parsedTfVarsFiles,
 		TfVars:           parsedTfVars,
 		TfBackendConfigs: parsedTfBackendConfigs,
-		WorkspaceName:    workspaceName,
-		TFCOrgName:       tfcOrgName,
-		TFCWorkspaceName: tfcWorkspaceName,
-		TFCNewRun:        tfcNewRun,
+		WorkspaceName:    *workspaceName,
+		TFCOrgName:       *tfcOrgName,
+		TFCWorkspaceName: *tfcWorkspaceName,
+		TFCNewRun:        *tfcNewRun,
 	}
 
 	// Generate assets
@@ -155,20 +244,20 @@ func main() {
 	}
 	frontendFS := http.FileServer(http.FS(fe))
 
-	if standalone {
-		err = r.generateZip(fe, fmt.Sprintf("%s.zip", zipFileName))
+	if *standalone {
+		err = r.generateZip(fe, fmt.Sprintf("%s.zip", *zipFileName))
 		if err != nil {
 			log.Fatalln(err)
 		}
 
-		log.Printf("Generated zip file: %s.zip\n", zipFileName)
+		log.Printf("Generated zip file: %s.zip\n", *zipFileName)
 		return
 	}
 
-	err = r.startServer(ipPort, frontendFS)
+	err = r.startServer(*ipPort, frontendFS)
 	if err != nil {
 		// http.Serve() returns error on shutdown
-		if genImage {
+		if *genImage {
 			log.Println("Server shut down.")
 		} else {
 			log.Fatalf("Could not start server: %s\n", err.Error())
@@ -181,7 +270,7 @@ func (r *rover) generateAssets() error {
 	// Get Plan
 	err := r.getPlan()
 	if err != nil {
-		return errors.New(fmt.Sprintf("Unable to parse Plan: %s", err))
+		return fmt.Errorf("unable to parse Plan: %s", err)
 	}
 
 	// Generate RSO, Map, Graph
@@ -204,7 +293,7 @@ func (r *rover) generateAssets() error {
 }
 
 func (r *rover) getPlan() error {
-	tmpDir, err := ioutil.TempDir("", "rover")
+	tmpDir, err := os.MkdirTemp("", "rover")
 	if err != nil {
 		return err
 	}
@@ -220,7 +309,7 @@ func (r *rover) getPlan() error {
 		log.Println("Using provided plan...")
 		r.Plan, err = tf.ShowPlanFile(context.Background(), r.PlanPath)
 		if err != nil {
-			return errors.New(fmt.Sprintf("Unable to read Plan (%s): %s", r.PlanPath, err))
+			return fmt.Errorf("unable to read Plan (%s): %s", r.PlanPath, err)
 		}
 		return nil
 	}
@@ -231,17 +320,17 @@ func (r *rover) getPlan() error {
 
 		planJsonFile, err := os.Open(r.PlanJSONPath)
 		if err != nil {
-			return errors.New(fmt.Sprintf("Unable to read Plan (%s): %s", r.PlanJSONPath, err))
+			return fmt.Errorf("unable to read Plan (%s): %s", r.PlanJSONPath, err)
 		}
 		defer planJsonFile.Close()
 
-		planJson, err := ioutil.ReadAll(planJsonFile)
+		planJson, err := io.ReadAll(planJsonFile)
 		if err != nil {
-			return errors.New(fmt.Sprintf("Unable to read Plan (%s): %s", r.PlanJSONPath, err))
+			return fmt.Errorf("unable to read Plan (%s): %s", r.PlanJSONPath, err)
 		}
 
 		if err := json.Unmarshal(planJson, &r.Plan); err != nil {
-			return errors.New(fmt.Sprintf("Unable to read Plan (%s): %s", r.PlanJSONPath, err))
+			return fmt.Errorf("unable to read Plan (%s): %s", r.PlanJSONPath, err)
 		}
 
 		return nil
@@ -256,7 +345,7 @@ func (r *rover) getPlan() error {
 		}
 
 		if r.TFCOrgName == "" {
-			return errors.New("Must specify Terraform Cloud organization to retrieve plan from Terraform Cloud")
+			return errors.New("must specify Terraform Cloud organization to retrieve plan from Terraform Cloud")
 		}
 
 		config := &tfe.Config{
@@ -265,19 +354,19 @@ func (r *rover) getPlan() error {
 
 		client, err := tfe.NewClient(config)
 		if err != nil {
-			return errors.New(fmt.Sprintf("Unable to connect to Terraform Cloud. %s", err))
+			return fmt.Errorf("unable to connect to Terraform Cloud. %s", err)
 		}
 
 		// Get TFC Workspace
 		ws, err := client.Workspaces.Read(context.Background(), r.TFCOrgName, r.TFCWorkspaceName)
 		if err != nil {
-			return errors.New(fmt.Sprintf("Unable to list workspace %s in %s organization. %s", r.TFCWorkspaceName, r.TFCOrgName, err))
+			return fmt.Errorf("unable to list workspace %s in %s organization. %s", r.TFCWorkspaceName, r.TFCOrgName, err)
 		}
 
 		// Retrieve all runs from specified TFC workspace
-		runs, err := client.Runs.List(context.Background(), ws.ID, tfe.RunListOptions{})
+		runs, err := client.Runs.List(context.Background(), ws.ID, &tfe.RunListOptions{})
 		if err != nil {
-			return errors.New(fmt.Sprintf("Unable to retrieve plan from %s in %s organization. %s", r.TFCWorkspaceName, r.TFCOrgName, err))
+			return fmt.Errorf("unable to retrieve plan from %s in %s organization. %s", r.TFCWorkspaceName, r.TFCOrgName, err)
 		}
 
 		run := runs.Items[0]
@@ -289,7 +378,7 @@ func (r *rover) getPlan() error {
 		runIsActionable := run.StatusTimestamps.AppliedAt.IsZero() && run.StatusTimestamps.DiscardedAt.IsZero()
 
 		if runIsActionable && r.TFCNewRun {
-			return errors.New(fmt.Sprintf("Did not create new run. %s in %s in %s is still active", run.ID, r.TFCWorkspaceName, r.TFCOrgName))
+			return fmt.Errorf("did not create new run. %s in %s in %s is still active", run.ID, r.TFCWorkspaceName, r.TFCOrgName)
 		}
 
 		// If latest run is not actionable, rover will create new run
@@ -300,7 +389,7 @@ func (r *rover) getPlan() error {
 				Workspace: ws,
 			})
 			if err != nil {
-				return errors.New(fmt.Sprintf("Unable to generate new run from %s in %s organization. %s", r.TFCWorkspaceName, r.TFCOrgName, err))
+				return fmt.Errorf("unable to generate new run from %s in %s organization. %s", r.TFCWorkspaceName, r.TFCOrgName, err)
 			}
 
 			run = newRun
@@ -311,7 +400,7 @@ func (r *rover) getPlan() error {
 			for i := 0; i < 30; i++ {
 				run, err := client.Runs.Read(context.Background(), newRun.ID)
 				if err != nil {
-					return errors.New(fmt.Sprintf("Unable to retrieve run from %s in %s organization. %s", r.TFCWorkspaceName, r.TFCOrgName, err))
+					return fmt.Errorf("unable to retrieve run from %s in %s organization. %s", r.TFCWorkspaceName, r.TFCOrgName, err)
 				}
 
 				if run.Plan != nil {
@@ -327,22 +416,22 @@ func (r *rover) getPlan() error {
 			}
 
 			if planID == "" {
-				return errors.New(fmt.Sprintf("Timeout waiting for plan to complete in %s in %s organization. %s", r.TFCWorkspaceName, r.TFCOrgName, err))
+				return fmt.Errorf("timeout waiting for plan to complete in %s in %s organization. %s", r.TFCWorkspaceName, r.TFCOrgName, err)
 			}
 		}
 
 		// Get most recent plan file
-		planBytes, err := client.Plans.JSONOutput(context.Background(), planID)
+		planBytes, err := client.Plans.ReadJSONOutput(context.Background(), planID)
 		if err != nil {
-			return errors.New(fmt.Sprintf("Unable to retrieve plan from %s in %s organization. %s", r.TFCWorkspaceName, r.TFCOrgName, err))
+			return fmt.Errorf("unable to retrieve plan from %s in %s organization. %s", r.TFCWorkspaceName, r.TFCOrgName, err)
 		}
 		// If empty plan file
 		if string(planBytes) == "" {
-			return errors.New(fmt.Sprintf("Empty plan. Check run %s in %s in %s is not pending", run.ID, r.TFCWorkspaceName, r.TFCOrgName))
+			return fmt.Errorf("empty plan, check run %s in %s in %s is not pending", run.ID, r.TFCWorkspaceName, r.TFCOrgName)
 		}
 
 		if err := json.Unmarshal(planBytes, &r.Plan); err != nil {
-			return errors.New(fmt.Sprintf("Unable to parse plan (ID: %s) from %s in %s organization.: %s", planID, r.TFCWorkspaceName, r.TFCOrgName, err))
+			return fmt.Errorf("unable to parse plan (ID: %s) from %s in %s organization.: %s", planID, r.TFCWorkspaceName, r.TFCOrgName, err)
 		}
 
 		return nil
@@ -365,14 +454,14 @@ func (r *rover) getPlan() error {
 
 	err = tf.Init(context.Background(), tfInitOptions...)
 	if err != nil {
-		return errors.New(fmt.Sprintf("Unable to initialize Terraform Plan: %s", err))
+		return fmt.Errorf("unable to initialize Terraform Plan: %s", err)
 	}
 
 	if r.WorkspaceName != "" {
 		log.Printf("Running in %s workspace...", r.WorkspaceName)
 		err = tf.WorkspaceSelect(context.Background(), r.WorkspaceName)
 		if err != nil {
-			return errors.New(fmt.Sprintf("Unable to select workspace (%s): %s", r.WorkspaceName, err))
+			return fmt.Errorf("unable to select workspace (%s): %s", r.WorkspaceName, err)
 		}
 	}
 
@@ -399,62 +488,15 @@ func (r *rover) getPlan() error {
 
 	_, err = tf.Plan(context.Background(), tfPlanOptions...)
 	if err != nil {
-		return errors.New(fmt.Sprintf("Unable to run Plan: %s", err))
+		return fmt.Errorf("unable to run Plan: %s", err)
 	}
 
 	r.Plan, err = tf.ShowPlanFile(context.Background(), planPath)
 	if err != nil {
-		return errors.New(fmt.Sprintf("Unable to read Plan: %s", err))
+		return fmt.Errorf("unable to read Plan: %s", err)
 	}
 
 	return nil
-}
-
-func showJSON(g interface{}) {
-	j, err := json.Marshal(g)
-	if err != nil {
-		log.Printf("Error producing JSON: %s\n", err)
-		os.Exit(2)
-	}
-	log.Printf("%+v", string(j))
-}
-
-func showModuleJSON(module *tfconfig.Module) {
-	j, err := json.MarshalIndent(module, "", "  ")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "error producing JSON: %s\n", err)
-		os.Exit(2)
-	}
-	os.Stdout.Write(j)
-	os.Stdout.Write([]byte{'\n'})
-}
-
-func saveJSONToFile(prefix string, fileType string, path string, j interface{}) string {
-	b, err := json.Marshal(j)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "error producing JSON: %s\n", err)
-		os.Exit(2)
-	}
-
-	newpath := filepath.Join(".", fmt.Sprintf("%s/%s", path, prefix))
-	err = os.MkdirAll(newpath, os.ModePerm)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	f, err := os.Create(fmt.Sprintf("%s/%s-%s.json", newpath, prefix, fileType))
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	defer f.Close()
-
-	_, err = f.WriteString(string(b))
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	return fmt.Sprintf("%s/%s-%s.json", newpath, prefix, fileType)
 }
 
 func enableCors(w *http.ResponseWriter) {

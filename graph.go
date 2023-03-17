@@ -369,19 +369,6 @@ func getResourceColor(t ResourceType) string {
 	return RESOURCE_COLOR
 }
 
-func getPrimitiveType(resourceType string) string {
-	switch resourceType {
-	case
-		"module",
-		"data",
-		"output",
-		"var",
-		"local":
-		return resourceType
-	}
-	return "resource"
-}
-
 func getResourceClass(resourceType ResourceType) string {
 	switch resourceType {
 
