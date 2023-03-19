@@ -495,6 +495,10 @@ export default {
         nodeDimensionsIncludeLabels: true,
         klay: {
           direction: "RIGHT",
+          thoroughness: 100,
+          feedbackEdges: true,
+          layoutHierarchy: true,
+          edgeSpacingFactor: 1,
           borderSpacing: 100,
           spacing: 30,
         },
