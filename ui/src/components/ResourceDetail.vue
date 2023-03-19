@@ -45,6 +45,11 @@ c
             :class="{ active: curTab === 'proposed', disabled: hasNoState }"
             >Proposed State</a
           >
+          <a
+            @click="selectTab('diff')"
+            :class="{ active: curTab === 'diff', disabled: hasNoState }"
+            >State diff</a
+          >
         </nav>
 
         <div class="tab-container" v-if="curTab === 'config'">
@@ -58,16 +63,17 @@ c
           >
           <div v-for="(val, k) in resourceConfig" :key="k" v-else>
             <dd class="key">{{ k }}</dd>
-            <dt class="value">
-              <span>{{ getConfigValue(val) }}</span>
+            <dt class="value" v-if="val">
+              {{ getConfigValue(val) }}
               <button
                 class="copy-button"
-                @click="copyText(getConfigValue(val), `${resource.id}-${k}`)"
+                @click="copyText(getStringConfigValue(val), `${resource.id}-${k}`)"
                 :ref="`${resource.id}-${k}`"
               >
                 Copy
               </button>
             </dt>
+            <dt class="value" v-else>null</dt>
           </div>
         </div>
 
@@ -75,16 +81,17 @@ c
           <span v-if="resourceChange.before">
             <div v-for="(val, k) in resourceChange.before" :key="k">
               <dd class="key">{{ k }}</dd>
-              <dt class="value">
+              <dt class="value" v-if="val">
                 {{ getBeforeValue(val) }}
                 <button
                   class="copy-button"
-                  @click="copyText(getBeforeValue(val), `${resource.id}-${k}`)"
+                  @click="copyText(getStringBeforeValue(val), `${resource.id}-${k}`)"
                   :ref="`${resource.id}-${k}`"
                 >
                   Copy
                 </button>
               </dt>
+              <dt class="value" v-else>null</dt>
             </div>
           </span>
           <span v-else>Resource doesn't currently exist.</span>
@@ -103,13 +110,54 @@ c
               {{ val.unknown ? "Value Unknown" : val }}
               <button
                 class="copy-button"
-                @click="copyText(getBeforeValue(val), `${resource.id}-${k}`)"
+                @click="copyText(getStringBeforeValue(val), `${resource.id}-${k}`)"
                 :ref="`${resource.id}-${k}`"
               >
                 Copy
               </button>
             </dt>
             <dt class="value" v-else>null</dt>
+          </div>
+        </div>
+
+        <div class="tab-container" v-if="curTab === 'diff'">
+          <!-- {{ resourceChange }} -->
+
+          <div v-for="(val, k) in resourceChange.after" :key="k">
+            <div v-if="((!lodashIsEqual(resourceChange.before[k], val)) && (resourceChange.before[k] !== null && val !== null))">
+              <dd class="key">{{ k }}</dd>
+              <dt
+                class="value-before"
+                v-if="resourceChange.before[k]"
+                :class="{ 'unknown-value': resourceChange.before[k].unknown }"
+              >
+                {{ resourceChange.before[k].unknown ? "Value Unknown" : resourceChange.before[k] }}
+                <button
+                  class="copy-button"
+                  @click="copyText(getStringBeforeValue(resourceChange.before[k]), `${resource.id}-${k}`)"
+                  :ref="`${resource.id}-${k}`"
+                >
+                  Copy
+                </button>
+              </dt>
+              <dt class="value-before" v-else>null</dt>
+
+              <dt
+                class="value-after"
+                v-if="val"
+                :class="{ 'unknown-value': val.unknown }"
+              >
+                {{ val.unknown ? "Value Unknown" : val }}
+                <button
+                  class="copy-button"
+                  @click="copyText(getStringBeforeValue(val), `${resource.id}-${k}`)"
+                  :ref="`${resource.id}-${k}`"
+                >
+                  Copy
+                </button>
+              </dt>
+              <dt class="value-after" v-else>null</dt>
+            </div>
           </div>
         </div>
       </div>
@@ -120,6 +168,7 @@ c
 <script>
 import axios from "axios";
 import copy from "copy-to-clipboard";
+import _ from 'lodash';
 
 export default {
   name: "ResourceDetail",
@@ -143,6 +192,9 @@ export default {
         onCopy: this.updateCopyText(ref),
       });
     },
+    lodashIsEqual(val1, val2) {
+      return _.isEqual(val1, val2)
+    },
     updateCopyText(ref) {
       // Use the first element if returns an array
       if (Array.isArray(this.$refs[ref])) {
@@ -157,6 +209,15 @@ export default {
         }, 1000);
       }
     },
+    getStringConfigValue(val) {
+      if (val.references) {
+        return val.references.join(", ");
+      } else if (val.constant_value) {
+        return val.constant_value;
+      } else {
+        return val ? JSON.stringify(val) : "null";
+      }
+    },
     getConfigValue(val) {
       if (val.references) {
         return val.references.join(", ");
@@ -166,11 +227,14 @@ export default {
         return val ? val : "null";
       }
     },
+    getStringBeforeValue(val) {
+      return val ? JSON.stringify(val) : "null";
+    },
     getBeforeValue(val) {
       return val ? val : "null";
     },
     getAfterValue(val) {
-      return val ? val : "null";
+      return val ? JSON.stringify(val) : "null";
     },
     getResourceConfig(resourceID, model, isChild) {
       let configID = model.states[resourceID]?.config_id ? model.states[resourceID]?.config_id : resourceID.replace(/\[[^[\]]*\]/g, "");
@@ -468,6 +532,34 @@ dt.value {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  white-space: pre-wrap;
+  overflow-x: overlay;
+}
+
+dt.value-before {
+  margin: 0.5em 0 1em 0;
+  padding: 0.5em;
+  font-size: 1em;
+  background-color: #f4ecff;
+  color: rgb(166, 1, 1);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  white-space: pre-wrap;
+  overflow-x: overlay;
+}
+
+dt.value-after {
+  margin: 0.5em 0 1em 0;
+  padding: 0.5em;
+  font-size: 1em;
+  background-color: #f4ecff;
+  color: rgb(33, 142, 0);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  white-space: pre-wrap;
+  overflow-x: overlay;
 }
 
 .resource-id {
@@ -500,6 +592,7 @@ dt.value {
   background-color: #8450ba;
   color: white;
   font-weight: bold;
+  white-space: normal;
 }
 
 .copy-button:hover {
