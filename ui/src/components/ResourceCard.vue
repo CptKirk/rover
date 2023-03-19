@@ -84,9 +84,15 @@ export default {
       providerIcon: {
         aws: require("@/assets/provider-icons/aws.png"),
         azure: require("@/assets/provider-icons/azure.png"),
+        docker: require("@/assets/provider-icons/docker.png"),
+        environment: require("@/assets/provider-icons/environment.png"),
         gcp: require("@/assets/provider-icons/gcp.png"),
         helm: require("@/assets/provider-icons/helm.png"),
         kubernetes: require("@/assets/provider-icons/kubernetes.png"),
+        local: require("@/assets/provider-icons/local.png"),
+        null: require("@/assets/provider-icons/null.png"),
+        scaleway: require("@/assets/provider-icons/scaleway.png"),
+        template: require("@/assets/provider-icons/template.png"),
       },
       resourceChangeIcons: {
         create: require("@/assets/resource-icons/plus.svg"),
