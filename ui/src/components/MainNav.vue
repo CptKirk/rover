@@ -1,7 +1,7 @@
 <template>
   <nav class="nav">
     <div class="nav-left">
-      <a class="title" href="https://github.com/im2nguyen/rover">
+      <a class="title" href="https://github.com/CptKirk/rover">
         <h2>Rover - Terraform Visualizer</h2>
       </a>
     </div>
@@ -12,9 +12,9 @@
       <!-- <a class="button outline" @click="toggleGraph()">{{
         graph ? "Hide Graph" : "Show Graph"
       }}</a> -->
-      <!-- <a class="button icon-only clear" @click="switchMode(this)">{{
+      <a class="button icon-only clear" @click="switchMode(this)">{{
         colorMode
-      }}</a> -->
+      }}</a>
     </div>
   </nav>
 </template>
@@ -37,39 +37,39 @@ export default {
 
       localStorage.colorMode = this.colorMode;
     },
-    // toggleGraph() {
-    //   this.graph = !this.graph;
-
-    //   this.$emit("toggleGraph", this.graph);
-    // },
     saveGraph() {
       this.$emit("saveGraph", true);
     },
   },
   mounted() {
     // Toggle dark mode
-    // if (localStorage.colorMode) {
-    //   this.colorMode = localStorage.colorMode;
-    // } else {
-    //   if (
-    //     window.matchMedia &&
-    //     window.matchMedia("(prefers-color-scheme: dark)").matches
-    //   ) {
-    //     this.colorMode = "🌙";
-    //   }
-    // }
-    // localStorage.colorMode = this.colorMode;
-    // if (this.colorMode === "☀️") {
-    //   document.body.classList.remove("dark");
-    // } else {
-    //   document.body.classList.add("dark");
-    // }
+    if (localStorage.colorMode) {
+      this.colorMode = localStorage.colorMode;
+    } else {
+      if (
+        window.matchMedia &&
+        window.matchMedia("(prefers-color-scheme: dark)").matches
+      ) {
+        this.colorMode = "🌙";
+      }
+    }
+    localStorage.colorMode = this.colorMode;
+    if (this.colorMode === "☀️") {
+      document.body.classList.remove("dark");
+    } else {
+      document.body.classList.add("dark");
+    }
   },
 };
 </script>
 
 <style scoped>
-.title {
+.dark h2 {
   padding: 0;
+  color: #f5f5f5;
+}
+
+.dark #saveGraph {
+  color: #f5f5f5;
 }
 </style>

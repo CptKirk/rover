@@ -1,7 +1,7 @@
 <template>
   <div class="file" v-if="fileName">
     <div class="row" @click="showChildren = !showChildren">
-      <img :src="expandIcons[expandIcon]" class="file-expand-icon" />
+      <img :src="expandIcons[expandIcon]" class="multi-tag file-expand-icon" />
       <div class="col-11 file-name">
         <strong class="text-lowercase">{{ fileName }}</strong>
       </div>
@@ -105,5 +105,9 @@ export default {
   width: 1em;
   padding-top: 0.1em;
   margin-left: 1.4em;
+}
+
+.dark .multi-tag {
+  filter: invert(100%);
 }
 </style>

@@ -529,6 +529,11 @@ export default {
   background-color: #f8f8f8 !important;
 }
 
+.dark #cytoscape-div {
+  height: 1000px !important;
+  background-color: #181921 !important;
+}
+
 .node {
   width: 14em;
   font-size: 2em;
@@ -557,36 +562,37 @@ export default {
 
 .create {
   background-color: #28a745;
+  border: 5px solid #28a745;
   color: white;
   font-weight: bold;
-  border: 0;
 }
 
 .delete {
-  /* background-color: #ffe9e9;
-  border: 5px solid #e40707; */
+  /* background-color: #ffe9e9;*/
+  border: 5px solid #e40707;
   background-color: #e40707;
   color: white;
   font-weight: bold;
-  border: 0;
 }
 
 .update {
-  /* background-color: #e1f0ff;
-  border: 5px solid #1d7ada; */
+  /* background-color: #e1f0ff; */
+  border: 5px solid #1d7ada;
   background-color: #1d7ada;
   color: white;
   font-weight: bold;
-  border: 0;
 }
 
 .replace {
-  /* background-color: #fff7e0;
-  border: 5px solid #ffc107; */
+  /* background-color: #fff7e0;*/
+  border: 5px solid #ffc107;
   background-color: #ffc107;
   color: black;
   font-weight: bold;
-  border: 0;
+}
+
+.dark .replace:hover {
+  color: white;
 }
 
 .output {
@@ -596,6 +602,10 @@ export default {
   font-weight: bold;
 }
 
+.dark .output:hover {
+  color: white;
+}
+
 .variable {
   background-color: #e1f0ff;
   border: 5px solid #1d7ada;
@@ -603,11 +613,19 @@ export default {
   font-weight: bold;
 }
 
+.dark .variable:hover {
+  color: white;
+}
+
 .data {
   background-color: #ffecec;
   border: 5px solid #dc477d;
   color: black;
   font-weight: bold;
+}
+
+.dark .data:hover {
+  color: white;
 }
 
 .locals {
