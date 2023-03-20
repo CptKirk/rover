@@ -36,7 +36,7 @@ COPY --from=builder /src/rover /bin/rover
 COPY --from=terraform-dep /bin/terraform /bin/terraform
 RUN chmod +x /bin/rover
 
-RUN apk add --no-cache bash curl ca-certificates
+RUN apk add --no-cache bash curl ca-certificates openssl
 
 WORKDIR /src
 

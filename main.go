@@ -19,9 +19,10 @@ import (
 	tfe "github.com/hashicorp/go-tfe"
 	"github.com/hashicorp/terraform-exec/tfexec"
 	tfjson "github.com/hashicorp/terraform-json"
+	"github.com/hashicorp/terraform-json/sanitize"
 )
 
-const VERSION = "0.4.0"
+const VERSION = "0.4.3"
 
 var TRUE = true
 
@@ -303,6 +304,22 @@ func (r *rover) getPlan() error {
 	if err != nil {
 		return err
 	}
+
+	planSanitizer := func(r *rover) {
+		if r.ShowSensitive || r.Plan == nil {
+			return
+		}
+
+		tmp, err := sanitize.SanitizePlan(r.Plan)
+		if err != nil {
+			log.Println("Failed to sanitize plan file!")
+			return
+		} else {
+			log.Println("Sanitized plan file")
+		}
+		r.Plan = tmp
+	}
+	defer planSanitizer(r)
 
 	// If user provided path to plan file
 	if r.PlanPath != "" {

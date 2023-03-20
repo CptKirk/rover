@@ -491,6 +491,11 @@ fieldset {
 .tabs a:hover {
   cursor: pointer;
 }
+
+.dark .tabs a {
+  color:#f4ecff
+}
+
 .resource-detail {
   padding: 1em 0;
 }
