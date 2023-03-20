@@ -15,6 +15,7 @@ import nodeHtmlLabel from "cytoscape-node-html-label";
 import axios from "axios";
 
 const config = {
+  wheelSensitivity: 0.25,
   autounselectify: true,
   style: [
     {
