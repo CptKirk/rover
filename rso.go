@@ -330,20 +330,6 @@ func (r *rover) GenerateResourceOverview() error {
 			rs[outputName] = &StateOverview{}
 		}
 
-		// If before/after sensitive, set value to "Sensitive Value"
-		if !r.ShowSensitive {
-			if output.BeforeSensitive != nil {
-				if output.BeforeSensitive.(bool) {
-					output.Before = "Sensitive Value"
-				}
-			}
-			if output.AfterSensitive != nil {
-				if output.AfterSensitive.(bool) {
-					output.After = "Sensitive Value"
-				}
-			}
-		}
-
 		rs[outputName].Change = *output
 		rs[outputName].Type = ResourceTypeOutput
 	}
