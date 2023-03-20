@@ -8,7 +8,7 @@ jobs:
   push_to_registry:
     name: Build and push image to GitHub Container Registry
     runs-on: ubuntu-latest
-    if: ${{ contains(github.ref_name, '_') }}
+    if: contains(github.ref_name, '_')
     steps:
       - name: Check out the repo
         uses: actions/checkout@v2
