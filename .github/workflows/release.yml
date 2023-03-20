@@ -2,10 +2,12 @@ name: release
 on:
   push:
     tags:
-      - "v[0-9]+.[0-9]+.[0-9]+"
+      - "v*"
+
 jobs:
   goreleaser:
     runs-on: ubuntu-latest
+    if: ${{ !contains(github.ref_name, '_') }}
     steps:
       - name: Checkout
         uses: actions/checkout@v2
